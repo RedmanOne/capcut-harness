@@ -110,5 +110,5 @@ If any line has `vo`, append an audio track `{ name: "Voice", type: "audio", ite
 ## Notes
 - Items in an `audio` track are audio; in a `video` track, image extensions are stills, the rest video;
   items without `file` are text.
-- `at` may be omitted (0). `at: end` / `until: end` resolve after every other item, so music can run to the end.
+- `at` may be omitted (0). `"<id>.start"` in `until` ends a clip exactly where that line starts: use it on the first video track, which CapCut treats as the main track and closes gaps on (later clips would shift). `at: end` / `until: end` resolve after every other item, so music can run to the end.
 - Positions: `posX`/`posY` in -1..1 from the frame centre, +y up (CapCut's convention); `scale` 1 = fitted to the frame.

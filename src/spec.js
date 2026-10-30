@@ -20,37 +20,31 @@ function resolvePath(base, rel) {
   return abs.replace(/\\/g, '/');
 }
 
+// "<id>" | "<id>.start" | "<id>.end", optional "+1.5" / "-0.5". A bare id means the line's start in `at`
+// and its end in `until`; ".start" in `until` butts a clip against the next one (CapCut's main track closes gaps).
+function parseLineRef(str, lines, bareIsEnd) {
+  const m = str.match(/^(\w+)(?:\.(start|end))?([+-]\d+(?:\.\d+)?)?$/);
+  if (!m) throw new Error(`unknown line id: ${str}`);
+  const [, id, edge, offset] = m;
+  const line = lines.find(l => l.id === id);
+  if (!line) throw new Error(`unknown line id: ${id}`);
+  const atEnd = edge ? edge === 'end' : bareIsEnd;
+  return (atEnd ? line.endSec : line.startSec) + (offset ? parseFloat(offset) : 0);
+}
+
 function parseAnchor(str, lines, episodeEnd) {
   if (str == null) return 0;
   if (typeof str === 'number') return str;
   if (str === 'start') return 0;
   if (str === 'end') return episodeEnd;
-  const m = str.match(/^(\w+)(?:\.end)?([+-]\d+(?:\.\d+)?)?$/);
-  if (m) {
-    const [, id, offset] = m;
-    const line = lines.find(l => l.id === id);
-    if (!line) throw new Error(`unknown line id: ${id}`);
-    const base = str.includes('.end') ? line.endSec : line.startSec;
-    return base + (offset ? parseFloat(offset) : 0);
-  }
-  if (str === 'start') return 0;
-  if (str === 'end') return episodeEnd;
-  throw new Error(`unknown line id: ${str}`);
+  return parseLineRef(str, lines, false);
 }
 
 function parseUntil(str, lines, episodeEnd) {
   if (typeof str === 'number') return str;
   if (str === 'start') return 0;
   if (str === 'end') return episodeEnd;
-  const m = str.match(/^(\w+)(?:\.end)?([+-]\d+(?:\.\d+)?)?$/);
-  if (m) {
-    const [, id, offset] = m;
-    const line = lines.find(l => l.id === id);
-    if (!line) throw new Error(`unknown line id: ${id}`);
-    const base = line.endSec;
-    return base + (offset ? parseFloat(offset) : 0);
-  }
-  throw new Error(`unknown line id: ${str}`);
+  return parseLineRef(str, lines, true);
 }
 
 // media (footage, voice, music) lives outside git: every media path resolves against media_root
