@@ -7,7 +7,9 @@
     "capcut-mcp": "src/server.js"
   },
   "scripts": {
-    "start": "node src/server.js"
+    "start": "node src/server.js",
+    "test": "node --test test/*.test.js",
+    "harness": "node src/cli.js"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.0.0",

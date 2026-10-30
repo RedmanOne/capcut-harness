@@ -91,7 +91,7 @@ export class CapCutDraft {
     let t = harvest(this.content);
     // fill any missing segment type from the template draft
     if (!t.video || !t.text || !t.audio) {
-      try { const base = JSON.parse(fs.readFileSync(path.join(DRAFTS_DIR, TEMPLATE_DRAFT, 'draft_content.json'), 'utf8')); const bt = harvest(base);
+      try { const base = JSON.parse(fs.readFileSync(path.join(DRAFTS_DIR, this.templateDraft || TEMPLATE_DRAFT, 'draft_content.json'), 'utf8')); const bt = harvest(base);
         for (const k of ['video', 'audio', 'text', 'image']) if (!t[k] && bt[k]) t[k] = bt[k];
         for (const k of Object.keys(bt.tracks)) if (!t.tracks[k]) t.tracks[k] = bt.tracks[k];
       } catch {}
@@ -146,7 +146,8 @@ export class CapCutDraft {
     const dur = opts.durUs != null ? opts.durUs : probeDur(file);
     const mat = clone(tpl.mat); mat.id = uid(); mat.path = file.replace(/\\/g, '/'); mat.material_name = path.basename(file); mat.type = type;
     if (kind !== 'audio') { const { w, h } = probeWH(file); mat.width = w; mat.height = h; }
-    mat.duration = kind === 'audio' ? probeDur(file) : (mat.duration || probeDur(file));
+    // the template's duration belongs to another file; photos get CapCut's "endless" still duration
+    mat.duration = kind === 'image' ? 10800 * US : probeDur(file);
     ['local_material_id', 'origin_material_id', 'local_id', 'request_id', 'aigc_history_id', 'aigc_item_id'].forEach(k => { if (k in mat) mat[k] = ''; });
     const matKey = kind === 'audio' ? 'audios' : (kind === 'image' ? 'videos' : 'videos'); // CapCut stores images in videos[]
     this._mats(matKey).push(mat);
@@ -280,7 +281,7 @@ export class CapCutDraft {
     const cPath = path.join(this.dir, 'draft_content.json');
     try { fs.copyFileSync(cPath, cPath + '.mcpbak'); } catch {}
     const tmp = cPath + '.tmp'; fs.writeFileSync(tmp, JSON.stringify(this.content)); fs.renameSync(tmp, cPath);
-    if (this.meta) { try { fs.copyFileSync(this.metaPath, this.metaPath + '.mcpbak'); } catch {} const mt = this.metaPath + '.tmp'; fs.writeFileSync(mt, JSON.stringify(this.meta)); fs.renameSync(mt, this.metaPath); }
+    if (this.meta) { this.meta.tm_duration = this.content.duration; try { fs.copyFileSync(this.metaPath, this.metaPath + '.mcpbak'); } catch {} const mt = this.metaPath + '.tmp'; fs.writeFileSync(mt, JSON.stringify(this.meta)); fs.renameSync(mt, this.metaPath); }
     return { saved: this.name, durationSec: +(this.content.duration / US).toFixed(3), validation: v };
   }
 }
@@ -291,7 +292,14 @@ export function cloneDraft(base, newName, { empty = false } = {}) {
   if (!fs.existsSync(path.join(src, 'draft_content.json'))) throw new Error(`base draft not found: ${base}`);
   if (fs.existsSync(dst)) throw new Error(`draft already exists: ${newName}`);
   fs.mkdirSync(dst, { recursive: true });
-  for (const fn of fs.readdirSync(src)) { const s = path.join(src, fn); try { if (fs.statSync(s).isFile()) fs.copyFileSync(s, path.join(dst, fn)); } catch {} }
+  // skip backups and the base's cover; give the copy its own identity so CapCut doesn't treat it as the base
+  for (const fn of fs.readdirSync(src)) { if (/\.(bak|mcpbak|tmp)$/.test(fn) || fn === 'draft_cover.jpg') continue; const s = path.join(src, fn); try { if (fs.statSync(s).isFile()) fs.copyFileSync(s, path.join(dst, fn)); } catch {} }
+  const metaPath = path.join(dst, 'draft_meta_info.json');
+  if (fs.existsSync(metaPath)) {
+    const meta = JSON.parse(fs.readFileSync(metaPath, 'utf8'));
+    Object.assign(meta, { draft_id: uid(), draft_name: newName, draft_fold_path: dst.replace(/\\/g, '/') });
+    fs.writeFileSync(metaPath, JSON.stringify(meta));
+  }
   if (empty) {
     const d = new CapCutDraft(newName);
     for (const k of Object.keys(d.content.materials)) if (Array.isArray(d.content.materials[k])) d.content.materials[k] = [];

@@ -1,5 +1,7 @@
 # capcut-mcp
 
+> **Lafincat fork.** Adds episode specs: a YAML file in git is the source of truth, and the CapCut draft and a quick ffmpeg preview are built from it (`node src/cli.js build`, MCP `capcut_build_episode`). See [docs/EPISODE_SPEC.md](docs/EPISODE_SPEC.md). Tests: `npm test`. Pinned to CapCut desktop 9.5 (plain-JSON drafts).
+
 An MCP server that lets Claude **read and edit CapCut desktop draft projects** — add/move/trim/split clips, text, audio, images; set transforms; validate; save. It works by cloning real segment/material templates out of an existing draft (the only reliable way to produce valid CapCut JSON), and it saves atomically with a backup and a validation pass.
 
 > **Free & open source (MIT).** Built by [James Aldrin Boncales](https://jmsldrn.com) for editors who want Claude to drive CapCut for them.

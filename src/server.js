@@ -96,6 +96,22 @@ s.tool('capcut_save', 'Write session edits to disk (backs up .mcpbak, validates)
 s.tool('capcut_discard', 'Drop unsaved session edits and reload the draft from disk.',
   { draft: z.string() }, wrap(async ({ draft }) => { open.delete(draft); return { discarded: draft }; }));
 
+s.tool('capcut_build_episode', 'Build from an episode spec (YAML): writes timeline.json next to it, optionally a low-res ffmpeg preview and/or a fresh CapCut draft (replace:true rebuilds an existing one, keeping a backup folder).',
+  { spec: z.string().describe('path to episode.yaml'), preview: z.boolean().optional(), capcut: z.boolean().optional(),
+    replace: z.boolean().optional(), base: z.string().optional().describe('base draft to clone templates from (default spec.draft.base)'),
+    draft: z.string().optional().describe('draft name (default spec.draft.name or spec.episode)') },
+  wrap(async (a) => {
+    const path = await import('path'); const fs = await import('fs');
+    const { loadSpec, resolveSpec } = await import('./spec.js');
+    const spec = loadSpec(a.spec); const tl = resolveSpec(spec); const dir = path.dirname(path.resolve(a.spec));
+    fs.writeFileSync(path.join(dir, 'timeline.json'), JSON.stringify(tl, null, 2));
+    const out = { timeline: path.join(dir, 'timeline.json'), durationSec: tl.durationSec };
+    if (a.preview) { const { renderPreview } = await import('./preview.js'); fs.mkdirSync(path.join(dir, 'render'), { recursive: true }); out.preview = renderPreview(tl, path.join(dir, 'render', 'preview.mp4')).out; }
+    if (a.capcut) { const { compileToCapcut } = await import('./compile.js'); const name = a.draft || spec.draft?.name || spec.episode;
+      open.delete(name); out.capcut = compileToCapcut(tl, { draft: name, base: a.base || spec.draft?.base, replace: !!a.replace }); }
+    return out;
+  }));
+
 const transport = new StdioServerTransport();
 await s.connect(transport);
 process.stderr.write(`[capcut-mcp] ready. drafts: ${DRAFTS_DIR}\n`);
