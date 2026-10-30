@@ -179,9 +179,10 @@ export class CapCutDraft {
       if (content.styles && content.styles[0]) {
         content.styles[0].range = [0, text.length];
         if (opts.color) content.styles[0].fill = { content: { solid: { color: hexToRgb(opts.color) } } };
-        if (opts.fontSize) content.styles[0].size = opts.fontSize;
+        if (opts.fontSize) { content.styles[0].size = opts.fontSize; mat.font_size = opts.fontSize; }
       }
       mat.content = JSON.stringify(content);
+      mat.name = text.slice(0, 40);             // the template's label otherwise shows in CapCut's list
     } catch { mat.content = JSON.stringify({ text, styles: [{ range: [0, text.length], size: opts.fontSize || 15, fill: { content: { solid: { color: hexToRgb(opts.color || '#ffffff') } } } }] }); }
     this._mats('texts').push(mat);
     const refs = tpl.refs.map(({ k, m }) => { const c = clone(m); c.id = uid(); this._mats(k).push(c); return c.id; });

@@ -5,8 +5,9 @@ import { spawnSync } from 'child_process';
 
 const WIN32 = process.platform === 'win32';
 
+// a straight quote can't live inside drawtext's quoted text: the preview shows a typographic one
 function escapeDrawtext(str) {
-  return String(str).replace(/[\\:'%,]/g, c => '\\' + c);
+  return String(str).replace(/'/g, '’').replace(/[\\:%,]/g, c => '\\' + c);
 }
 
 function roundEven(n) {
