@@ -246,6 +246,22 @@ export class CapCutDraft {
   }
   _recalcDuration() { let max = 0; for (const tr of this.content.tracks) for (const s of (tr.segments || [])) max = Math.max(max, s.target_timerange.start + s.target_timerange.duration); this.content.duration = max; }
 
+  // keyframes: { KFTypeScaleX: [[timeUs, value], ...], KFTypeRotation: ..., KFTypePositionX/Y, KFTypeAlpha }
+  // times are relative to the segment start; scale lists use uniform scale (ScaleX drives both axes)
+  setKeyframes(segId, lists) {
+    const { s } = this._find(segId);
+    s.common_keyframes = Object.entries(lists).filter(([, keys]) => keys && keys.length).map(([type, keys]) => ({
+      id: uid(), material_id: '', property_type: type,
+      keyframe_list: [...keys].sort((a, b) => a[0] - b[0]).map(([t, v]) => ({
+        id: uid(), time_offset: Math.round(t), values: [v], curveType: 'Line', graphID: '',
+        left_control: { x: 0, y: 0 }, right_control: { x: 0, y: 0 },
+      })),
+    }));
+    s.keyframe_refs = s.keyframe_refs || [];
+    if (lists.KFTypeScaleX) s.uniform_scale = { on: true, value: s.clip?.scale?.x ?? 1 };
+    return { segmentId: segId, lists: s.common_keyframes.length };
+  }
+
   // escape hatch: apply a JSON-merge-style patch to content (advanced/undocumented ops)
   rawPatch(patch) { deepMerge(this.content, patch); return { ok: true }; }
 

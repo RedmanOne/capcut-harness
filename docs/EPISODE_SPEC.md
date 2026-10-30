@@ -112,3 +112,6 @@ If any line has `vo`, append an audio track `{ name: "Voice", type: "audio", ite
   items without `file` are text.
 - `at` may be omitted (0). `"<id>.start"` in `until` ends a clip exactly where that line starts: use it on the first video track, which CapCut treats as the main track and closes gaps on (later clips would shift). `at: end` / `until: end` resolve after every other item, so music can run to the end.
 - Positions: `posX`/`posY` in -1..1 from the frame centre, +y up (CapCut's convention); `scale` 1 = fitted to the frame.
+- Motion: `anim` on an item (or in its style) adds CapCut keyframes: `pop` (sticker: 0 → 110% → 100% in 0.25 s,
+  ±3° wobble, out in the last 0.15 s), `push` / `pull` (stills: 100% ↔ 108% over the clip), `shake` (0.4 s position
+  jitter), `punch` (112% → 100% in 0.2 s). Combine with `+`: `pop+shake`. See `src/motion.js`.

@@ -3,6 +3,7 @@
 import fs from 'fs';
 import path from 'path';
 import { CapCutDraft, cloneDraft, DRAFTS_DIR } from './core.js';
+import { motionKeyframes } from './motion.js';
 
 const US = 1e6;
 const us = s => Math.round(s * US);
@@ -40,6 +41,8 @@ export function compileToCapcut(tl, { draft, base, replace = false, force = fals
         : it.kind === 'audio' ? d.addAudio(it.file, o)
         : d.addVideo(it.file, o);
       map[it.id] = r.segmentId;
+      const kf = motionKeyframes(it);
+      if (kf) d.setKeyframes(r.segmentId, kf);
     }
   }
   const saved = d.save({ force });
