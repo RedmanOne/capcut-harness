@@ -24,3 +24,9 @@ test('combined presets merge lists; unknown throws', () => {
   assert.ok(k.KFTypeScaleX && k.KFTypePositionX && k.KFTypePositionY);
   assert.throws(() => motionKeyframes(item('spin')), /unknown anim/);
 });
+
+import { wrapText } from '../src/core.js';
+test('wrapText breaks at spaces within the width', () => {
+  assert.equal(wrapText('one two three four', 9), 'one two\nthree\nfour');
+  assert.equal(wrapText('short', 20), 'short');
+});

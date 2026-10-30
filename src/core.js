@@ -149,9 +149,18 @@ export class CapCutDraft {
     // the template's duration belongs to another file; photos get CapCut's "endless" still duration
     mat.duration = kind === 'image' ? 10800 * US : probeDur(file);
     ['local_material_id', 'origin_material_id', 'local_id', 'request_id', 'aigc_history_id', 'aigc_item_id'].forEach(k => { if (k in mat) mat[k] = ''; });
+    // CapCut 9.5 hides an audio material whose type it doesn't know ("audio" turns into "none" on open):
+    // write it the way CapCut writes an imported local file
+    if (kind === 'audio') Object.assign(mat, { type: 'extract_music', name: path.basename(file), category_name: 'local',
+      music_id: uid(), local_material_id: uid(), check_flag: 1 });
     const matKey = kind === 'audio' ? 'audios' : (kind === 'image' ? 'videos' : 'videos'); // CapCut stores images in videos[]
     this._mats(matKey).push(mat);
     const refs = tpl.refs.map(({ k, m }) => { const c = clone(m); c.id = uid(); this._mats(k).push(c); return c.id; });
+    if (kind === 'audio' && !tpl.refs.some(({ k }) => k === 'beats')) {        // CapCut's own audio segments carry a beats entry
+      const b = { id: uid(), type: 'beats', enable_ai_beats: false, gear: 404, gear_count: 0, mode: 404, user_beats: [],
+        user_delete_ai_beats: null, ai_beats: { melody_url: '', melody_path: '', beats_url: '', beats_path: '', melody_percents: [0], beat_speed_infos: [] } };
+      this._mats('beats').push(b); refs.splice(2, 0, b.id);
+    }
     const seg = clone(tpl.seg); seg.id = uid(); seg.material_id = mat.id; seg.extra_material_refs = refs;
     const at = opts.atUs || 0;
     seg.target_timerange = { start: at, duration: dur };
@@ -173,6 +182,11 @@ export class CapCutDraft {
     const tpl = this.templates().text;
     if (!tpl) throw new Error('no text template found. Set CAPCUT_TEMPLATE_DRAFT to a draft that contains a text layer.');
     const mat = clone(tpl.mat); mat.id = uid();
+    // keep long lines inside the frame: CapCut wraps at line_max_width only when forced; a hard break per ~line is
+    // the fallback (about 55 characters per line at font size 9, scaled by size)
+    const perLine = Math.max(12, Math.round(55 * 9 / (opts.fontSize || 9)));
+    text = wrapText(text, perLine);
+    Object.assign(mat, { force_apply_line_max_width: true, line_max_width: 0.8, line_feed: 1 });
     try {
       const content = JSON.parse(mat.content);
       content.text = text;
@@ -334,3 +348,14 @@ function hexToRgb(hex) { const h = hex.replace('#', ''); return [parseInt(h.slic
 function deepMerge(t, s) { for (const k of Object.keys(s)) { if (s[k] && typeof s[k] === 'object' && !Array.isArray(s[k]) && t[k] && typeof t[k] === 'object') deepMerge(t[k], s[k]); else t[k] = s[k]; } return t; }
 
 export const _us = US;
+
+// break text into lines of at most `n` characters at spaces (existing breaks kept)
+export function wrapText(text, n) {
+  return String(text).split('\n').map(par => {
+    const out = []; let line = '';
+    for (const w of par.split(' ')) {
+      if (line && (line + ' ' + w).length > n) { out.push(line); line = w; } else line = line ? line + ' ' + w : w;
+    }
+    out.push(line); return out.join('\n');
+  }).join('\n');
+}
