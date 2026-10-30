@@ -151,7 +151,8 @@ function resolveItem(item, track, spec, lines, episodeEnd, probe, stickersDir, i
     fontSize: item.fontSize,
     color: item.color,
     anim: item.anim,
-    hidden: item.hidden
+    hidden: item.hidden,
+    flip: item.flip
   };
 
   const styleName = item.style ?? track.style;
@@ -166,6 +167,7 @@ function resolveItem(item, track, spec, lines, episodeEnd, probe, stickersDir, i
   resolved.color ??= null;
   resolved.anim ??= null;
   resolved.hidden ??= false;
+  resolved.flip ??= null;
 
   return item.files ? fillSlot(resolved, item, spec, probe) : resolved;
 }

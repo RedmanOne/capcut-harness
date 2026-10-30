@@ -239,6 +239,7 @@ export class CapCutDraft {
     if (p.posX != null) seg.clip.transform.x = p.posX;
     if (p.posY != null) seg.clip.transform.y = p.posY;
     if (p.rotation != null) seg.clip.rotation = p.rotation;
+    if (p.flipH != null || p.flipV != null) seg.clip.flip = { horizontal: p.flipH ?? !!seg.clip.flip?.horizontal, vertical: p.flipV ?? !!seg.clip.flip?.vertical };
     if (p.opacity != null) seg.clip.alpha = p.opacity;
     if (p.volume != null) seg.volume = p.volume;
     if (p.visible != null) seg.visible = p.visible;

@@ -56,6 +56,7 @@ export function compileToCapcut(tl, { draft, base, replace = false, force = fals
       if (kf) d.setKeyframes(r.segmentId, kf);
       // outline text (script lines, notes): on the timeline to read, not in the picture
       if (it.hidden) d.setProps(r.segmentId, { visible: false });
+      if (it.flip) d.setProps(r.segmentId, { flipH: it.flip.includes('h'), flipV: it.flip.includes('v') });
     }
   }
   const saved = d.save({ force });

@@ -174,6 +174,21 @@ describe('resolveSpec', () => {
     assert.equal(result.tracks[0].items[0].durSec, 3);
   });
 
+  it('flip passes through, default null', () => {
+    temp = createTempSpec({
+      episode: 'test',
+      lines: [{ id: 'l1', text: 'First', dur: 1 }],
+      tracks: [{
+        name: 'Video',
+        type: 'video',
+        items: [{ file: 'a.mp4', at: 'l1', flip: 'v' }, { file: 'b.mp4', at: 'l1' }]
+      }]
+    });
+    const result = resolveSpec(temp.spec, { probe });
+    assert.equal(result.tracks[0].items[0].flip, 'v');
+    assert.equal(result.tracks[0].items[1].flip, null);
+  });
+
   it('sticker path', () => {
     temp = createTempSpec({
       episode: 'test',

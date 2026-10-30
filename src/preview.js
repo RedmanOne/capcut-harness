@@ -95,6 +95,8 @@ function buildFilterGraph(timeline, W, H, fps, durationSec, fontFile) {
 
         let vf = `[${idx}:v]setpts=PTS-STARTPTS+${atSec}/TB`;
         vf += `,scale=${W}:${H}:force_original_aspect_ratio=decrease`;
+        if (item.flip?.includes('h')) vf += ',hflip';
+        if (item.flip?.includes('v')) vf += ',vflip';
         if (scale !== 1) {
           vf += `,scale=iw*${scale}:ih*${scale}`;
         }
