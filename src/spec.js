@@ -167,7 +167,24 @@ function resolveItem(item, track, spec, lines, episodeEnd, probe, stickersDir, i
   resolved.anim ??= null;
   resolved.hidden ??= false;
 
-  return resolved;
+  return item.files ? fillSlot(resolved, item, spec, probe) : resolved;
+}
+
+// `files: [a, b, ...]`: the slot plays `file` (from `src`) and fills the rest of its duration with the listed
+// clips in turn (each from its start), back to back — B-roll under long talking parts.
+function fillSlot(first, item, spec, probe) {
+  const pool = [first.file, ...item.files.map(f => resolvePath(mediaRoot(spec), f))];
+  const out = [];
+  let t = first.atSec, left = first.durSec, k = 0;
+  while (left > 0.01 && k < 200) {
+    const file = pool[k % pool.length], src = k === 0 ? first.srcSec : 0;
+    const len = Math.max(0, probe(file) - src);
+    if (!(len > 0.05)) { k++; continue; }
+    const dur = Math.min(len, left);
+    out.push({ ...first, id: `${first.id}.${k}`, file, srcSec: round3(src), atSec: round3(t), durSec: round3(dur) });
+    t += dur; left -= dur; k++;
+  }
+  return out;
 }
 
 function resolveFromLinesTrack(track, spec, lines, episodeEnd, stickersDir) {
@@ -216,11 +233,11 @@ export function resolveSpec(spec, opts = {}) {
   const resolved = specTracks.map(track => track.from_lines ? null
     : (track.items ?? []).map((item, i) => toEnd(item) ? null : resolveItem(item, track, spec, lines, linesEnd, probe, stickers, i)));
   let durationSec = linesEnd;
-  for (const items of resolved) for (const it of items ?? []) if (it) durationSec = Math.max(durationSec, it.atSec + it.durSec);
+  for (const items of resolved) for (const it of (items ?? []).flat()) if (it) durationSec = Math.max(durationSec, it.atSec + it.durSec);
 
   const tracks = specTracks.map((track, ti) => {
     if (track.from_lines) return resolveFromLinesTrack(track, spec, lines, durationSec, stickers);
-    const items = (track.items ?? []).map((item, i) => resolved[ti][i] ?? resolveItem(item, track, spec, lines, durationSec, probe, stickers, i));
+    const items = (track.items ?? []).map((item, i) => resolved[ti][i] ?? resolveItem(item, track, spec, lines, durationSec, probe, stickers, i)).flat();
     return { name: track.name, type: track.type, items };
   });
 

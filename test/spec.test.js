@@ -266,3 +266,14 @@ describe('resolveSpec', () => {
     cleanup(dir);
   });
 });
+import { resolveSpec as resolveFill } from '../src/spec.js';
+import { test as testFill } from 'node:test';
+import assertFill from 'node:assert/strict';
+testFill('files fill a long slot back to back', () => {
+  const t = resolveFill({ __dir: '.', lines: [{ id: 'a', text: 'x', dur: 25 }],
+    tracks: [{ name: 'V', type: 'video', items: [{ file: 'a.mp4', at: 'a', until: 'a', src: 2, files: ['b.mp4'] }] }] },
+    { probe: f => (f.endsWith('a.mp4') ? 10 : 6) });
+  const it = t.tracks[0].items;
+  assertFill.deepEqual(it.map(i => [i.file.split('/').pop(), i.atSec, i.durSec, i.srcSec]),
+    [['a.mp4', 0, 8, 2], ['b.mp4', 8, 6, 0], ['a.mp4', 14, 10, 0], ['b.mp4', 24, 1, 0]]);
+});
