@@ -1,18 +1,17 @@
 // motion presets -> CapCut keyframe lists (times in microseconds from the segment start).
-// Nothing on screen stays still: stickers pop in, wobble and pop out; stills drift; impacts shake.
+// Nothing on screen stays still: stickers squash in, hold steady and squash out; stills drift; impacts shake.
 const US = 1e6;
 
 const presets = {
-  // sticker: 0 -> 110% -> 100% in 0.25 s, a slow +-3 degree wobble, 100% -> 0 in the last 0.15 s
+  // sticker / logo: squash-and-stretch in (stretch up, squash, settle), a steady hold, then squash and vanish
   pop(it, D) {
-    const s = it.scale, inEnd = Math.min(0.25, D / 3), outStart = Math.max(inEnd, D - 0.15);
-    const rot = [[0, 0]];
-    for (let t = inEnd, k = 0; t < outStart; t += 0.6, k++) rot.push([t, k % 2 ? -3 : 3]);
-    rot.push([outStart, 0]);
-    return {
-      KFTypeScaleX: [[0, 0], [inEnd * 0.6, s * 1.1], [inEnd, s], [outStart, s], [D, 0]],
-      KFTypeRotation: rot,
-    };
+    const s = it.scale, a = Math.min(0.4, D * 0.35), b = Math.min(0.3, D * 0.3), o = D - b;
+    const inX = [[0, 0.2], [0.3, 0.75], [0.55, 1.2], [0.78, 0.94], [1, 1]];
+    const inY = [[0, 0.2], [0.3, 1.3], [0.55, 0.82], [0.78, 1.06], [1, 1]];
+    const outX = [[0, 1], [0.4, 1.18], [0.7, 0.82], [1, 0]];
+    const outY = [[0, 1], [0.4, 0.86], [0.7, 1.22], [1, 0]];
+    const keys = (inK, outK) => [...inK.map(([f, v]) => [f * a, s * v]), ...outK.map(([f, v]) => [o + f * b, s * v])];
+    return { KFTypeScaleX: keys(inX, outX), KFTypeScaleY: keys(inY, outY) };
   },
   // still: slow push-in / pull-out (Ken Burns)
   push: (it, D) => ({ KFTypeScaleX: [[0, it.scale], [D, it.scale * 1.08]] }),
