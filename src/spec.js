@@ -169,7 +169,40 @@ function resolveItem(item, track, spec, lines, episodeEnd, probe, stickersDir, i
   resolved.hidden ??= false;
   resolved.flip ??= null;
 
+  if (item.every) return cutSlot(resolved, item, spec, probe);
   return item.files ? fillSlot(resolved, item, spec, probe) : resolved;
+}
+
+// A CapCut track can't hold overlapping segments: items that overlap spill into extra tracks ("SFX", "SFX 2", ...).
+// Video tracks never spill (the first one is the main track; an overlap there is a spec error the validator reports).
+function lanes(track) {
+  if (track.type !== 'audio') return [track];
+  const out = [];
+  for (const it of [...track.items].sort((a, b) => a.atSec - b.atSec)) {
+    let lane = out.find(l => l.end <= it.atSec + 1e-6);
+    if (!lane) out.push(lane = { end: 0, items: [] });
+    lane.items.push(it); lane.end = it.atSec + it.durSec;
+  }
+  return out.length ? out.map((l, i) => ({ name: i ? `${track.name} ${i + 1}` : track.name, type: track.type, items: l.items })) : [track];
+}
+
+// `every: N` on a video item: cut the slot into equal shots of at most N seconds (a new frame every few seconds).
+// Shots cycle through `file` and `files`; a clip used again continues from where it stopped (wrapping at its end);
+// every other shot is punched in by `zoom` (default 1.2; 1 = off), so even a single still changes framing.
+function cutSlot(first, item, spec, probe) {
+  const pool = [first.file, ...(item.files ?? []).map(f => resolvePath(mediaRoot(spec), f))];
+  const n = Math.max(1, Math.ceil(first.durSec / item.every - 1e-6)), len = first.durSec / n, zoom = item.zoom ?? 1.2;
+  const head = new Map([[first.file, first.srcSec]]);
+  const out = [];
+  for (let k = 0; k < n; k++) {
+    const file = pool[k % pool.length], image = /\.(png|jpe?g|webp)$/i.test(file);
+    let src = image ? 0 : head.get(file) ?? 0;
+    if (!image && src + len > probe(file)) src = 0;
+    if (!image) head.set(file, src + len);
+    out.push({ ...first, id: `${first.id}.${k}`, file, kind: image ? 'image' : 'video', srcSec: round3(src),
+      atSec: round3(first.atSec + k * len), durSec: round3(round3(first.atSec + (k + 1) * len) - round3(first.atSec + k * len)), scale: k % 2 ? round3(first.scale * zoom) : first.scale });
+  }
+  return out;
 }
 
 // `files: [a, b, ...]`: the slot plays `file` (from `src`) and fills the rest of its duration with the listed
@@ -241,7 +274,7 @@ export function resolveSpec(spec, opts = {}) {
     if (track.from_lines) return resolveFromLinesTrack(track, spec, lines, durationSec, stickers);
     const items = (track.items ?? []).map((item, i) => resolved[ti][i] ?? resolveItem(item, track, spec, lines, durationSec, probe, stickers, i)).flat();
     return { name: track.name, type: track.type, items };
-  });
+  }).flatMap(lanes);
 
   const voiceItems = lines
     .filter(l => l.vo)

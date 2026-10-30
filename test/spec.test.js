@@ -189,6 +189,29 @@ describe('resolveSpec', () => {
     assert.equal(result.tracks[0].items[1].flip, null);
   });
 
+  it('every cuts a slot into short shots, cycling files and punching in', () => {
+    temp = createTempSpec({
+      episode: 'test', media_root: '/m',
+      lines: [{ id: 'l1', text: 'First', dur: 10 }],
+      tracks: [{ name: 'Video', type: 'video', items: [{ file: 'a.mp4', files: ['b.png'], at: 'l1', until: 'l1', every: 4 }] }]
+    });
+    const items = resolveSpec(temp.spec, { probe }).tracks[0].items;
+    assert.equal(items.length, 3);
+    assert.deepEqual(items.map(i => [i.file.split('/').pop(), i.kind, i.atSec, i.scale]),
+      [['a.mp4', 'video', 0, 1], ['b.png', 'image', 3.333, 1.2], ['a.mp4', 'video', 6.667, 1]]);
+    assert.equal(items[2].srcSec, 3.333);
+  });
+
+  it('overlapping audio spills into extra tracks', () => {
+    temp = createTempSpec({
+      episode: 'test',
+      lines: [{ id: 'l1', text: 'First', dur: 10 }],
+      tracks: [{ name: 'SFX', type: 'audio', items: [{ file: 'a.mp3', at: 0, dur: 3 }, { file: 'b.mp3', at: 2, dur: 3 }, { file: 'c.mp3', at: 3, dur: 1 }] }]
+    });
+    const t = resolveSpec(temp.spec, { probe }).tracks;
+    assert.deepEqual(t.map(x => [x.name, x.items.map(i => i.atSec)]), [['SFX', [0, 3]], ['SFX 2', [2]]]);
+  });
+
   it('sticker path', () => {
     temp = createTempSpec({
       episode: 'test',

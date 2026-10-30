@@ -118,5 +118,7 @@ If any line has `vo`, append an audio track `{ name: "Voice", type: "audio", ite
 - Rebuilding (`--replace`) refuses a draft that changed in CapCut since its last build (the owner's hand edits): bring
   the edits into the spec first, or pass `--force`. Replaced drafts are kept in `D:/CapCut/Draft backups/`, never deleted.
 - `hidden: true` keeps an item on the timeline but out of the picture (outline text: script lines, notes, cues).
+- `every: 4` on a video/image item: cut the slot into equal shots of at most 4 s, cycling through `file` and `files`
+  (a reused clip continues where it stopped); every other shot is punched in by `zoom` (default 1.2, 1 = off).
 - `flip: v | h | hv` on a video/image item: mirror it vertically and/or horizontally (e.g. footage shot as a reflection).
 - `files: [b.mp4, c.mp4]` on a video item: the slot plays `file` from `src`, then fills the rest of its duration with the listed clips in turn (B-roll under long talking parts).
