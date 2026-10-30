@@ -10,6 +10,8 @@ const [cmd, ...rest] = process.argv.slice(2);
 const flag = (name, def) => { const i = rest.indexOf(`--${name}`); if (i < 0) return def; const v = rest[i + 1]; return v && !v.startsWith('--') ? v : true; };
 
 // phone-mic voice chain: rumble cut, denoise, gentle compression, loudness for voice under music
+// pauses longer than 0.4 s shrink to 0.25 s (no dead air, rule 26); --keep-pauses turns it off
+export const TRIM_PAUSES = 'silenceremove=start_periods=1:start_threshold=-45dB:stop_periods=-1:stop_duration=0.4:stop_threshold=-45dB:stop_silence=0.25';
 export const VOICE_FILTER = 'highpass=f=80,afftdn=nf=-25,acompressor=threshold=-20dB:ratio=3:attack=5:release=120,loudnorm=I=-16:TP=-1.5:LRA=11';
 
 async function main() {
@@ -37,10 +39,11 @@ async function main() {
   } else if (cmd === 'voice-clean') {
     const [inp, outp] = rest;
     if (!inp || !outp) throw new Error('usage: voice-clean <in> <out>');
-    execFileSync('ffmpeg', ['-v', 'error', '-y', '-i', inp, '-af', VOICE_FILTER, '-ar', '48000', '-ac', '1', outp], { stdio: 'inherit' });
+    const af = flag('keep-pauses') ? VOICE_FILTER : VOICE_FILTER.replace('acompressor', `${TRIM_PAUSES},acompressor`);
+    execFileSync('ffmpeg', ['-v', 'error', '-y', '-i', inp, '-af', af, '-ar', '48000', '-ac', '1', outp], { stdio: 'inherit' });
     console.log(JSON.stringify({ out: path.resolve(outp) }));
   } else {
-    console.error('commands: build <episode.yaml> [--preview [out]] [--capcut] [--replace] [--base draft] [--draft name] | voice-clean <in> <out>');
+    console.error('commands: build <episode.yaml> [--preview [out]] [--capcut] [--replace] [--base draft] [--draft name] | voice-clean <in> <out> [--keep-pauses]');
     process.exit(2);
   }
 }
