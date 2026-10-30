@@ -184,8 +184,12 @@ export class CapCutDraft {
     const mat = clone(tpl.mat); mat.id = uid();
     // keep long lines inside the frame: CapCut wraps at line_max_width only when forced; a hard break per ~line is
     // the fallback (about 55 characters per line at font size 9, scaled by size)
-    const perLine = Math.max(12, Math.round(55 * 9 / (opts.fontSize || 9)));
-    text = wrapText(text, perLine);
+    // long text: smaller font until it fits `maxLines` (default 2), and a box placed low/high grows away from the
+    // edge (CapCut grows a text box around its centre)
+    const fit = fitText(text, opts.fontSize || 9, opts.maxLines ?? 2);
+    text = fit.text;
+    opts = { ...opts, fontSize: fit.size };
+    if (fit.lines > 1 && opts.posY) opts.posY -= Math.sign(opts.posY) * (fit.lines - 1) * fit.size * LINE_H / 2;
     Object.assign(mat, { force_apply_line_max_width: true, line_max_width: 0.8, line_feed: 1 });
     try {
       const content = JSON.parse(mat.content);
@@ -358,4 +362,16 @@ export function wrapText(text, n) {
     }
     out.push(line); return out.join('\n');
   }).join('\n');
+}
+
+// text height per font-size unit per line, in canvas units (half the frame height = 1); measured roughly
+const LINE_H = 0.012;
+
+/// wrap `text` at ~55 characters per line at size 9 (scaled by size); shrink the size in steps until it fits
+/// `maxLines` or reaches size 5
+export function fitText(text, size, maxLines) {
+  for (let s = size; ; s -= 0.5) {
+    const t = wrapText(text, Math.max(12, Math.round(55 * 9 / s))), lines = t.split(String.fromCharCode(10)).length;
+    if (lines <= maxLines || s <= 5) return { text: t, size: s, lines };
+  }
 }
