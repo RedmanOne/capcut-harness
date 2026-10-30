@@ -115,3 +115,6 @@ If any line has `vo`, append an audio track `{ name: "Voice", type: "audio", ite
 - Motion: `anim` on an item (or in its style) adds CapCut keyframes: `pop` (sticker: 0 → 110% → 100% in 0.25 s,
   ±3° wobble, out in the last 0.15 s), `push` / `pull` (stills: 100% ↔ 108% over the clip), `shake` (0.4 s position
   jitter), `punch` (112% → 100% in 0.2 s). Combine with `+`: `pop+shake`. See `src/motion.js`.
+- Rebuilding (`--replace`) refuses a draft that changed in CapCut since its last build (the owner's hand edits): bring
+  the edits into the spec first, or pass `--force`. Replaced drafts are kept in `D:/CapCut/Draft backups/`, never deleted.
+- `hidden: true` keeps an item on the timeline but out of the picture (outline text: script lines, notes, cues).

@@ -250,6 +250,8 @@ export class CapCutDraft {
   // times are relative to the segment start; scale lists use uniform scale (ScaleX drives both axes)
   setKeyframes(segId, lists) {
     const { s } = this._find(segId);
+    // CapCut 9.5 applies a ScaleX list to X only, even with uniform scale on: animate both axes
+    if (lists.KFTypeScaleX && !lists.KFTypeScaleY) lists = { ...lists, KFTypeScaleY: lists.KFTypeScaleX };
     s.common_keyframes = Object.entries(lists).filter(([, keys]) => keys && keys.length).map(([type, keys]) => ({
       id: uid(), material_id: '', property_type: type,
       keyframe_list: [...keys].sort((a, b) => a[0] - b[0]).map(([t, v]) => ({
@@ -258,7 +260,7 @@ export class CapCutDraft {
       })),
     }));
     s.keyframe_refs = s.keyframe_refs || [];
-    if (lists.KFTypeScaleX) s.uniform_scale = { on: true, value: s.clip?.scale?.x ?? 1 };
+    if (lists.KFTypeScaleX) s.uniform_scale = { on: false, value: s.clip?.scale?.x ?? 1 };
     return { segmentId: segId, lists: s.common_keyframes.length };
   }
 

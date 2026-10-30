@@ -150,7 +150,8 @@ function resolveItem(item, track, spec, lines, episodeEnd, probe, stickersDir, i
     posY: item.posY,
     fontSize: item.fontSize,
     color: item.color,
-    anim: item.anim
+    anim: item.anim,
+    hidden: item.hidden
   };
 
   const styleName = item.style ?? track.style;
@@ -164,6 +165,7 @@ function resolveItem(item, track, spec, lines, episodeEnd, probe, stickersDir, i
   resolved.fontSize ??= null;
   resolved.color ??= null;
   resolved.anim ??= null;
+  resolved.hidden ??= false;
 
   return resolved;
 }
