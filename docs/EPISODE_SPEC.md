@@ -7,7 +7,7 @@ keeping the old one as `<name>.bak-<time>`).
 ```bash
 node src/cli.js build path/to/episode.yaml --preview            # timeline.json + render/preview.mp4 (360p)
 node src/cli.js build path/to/episode.yaml --capcut --replace   # fresh CapCut draft (CapCut must be closed)
-node src/cli.js voice-clean raw.wav clean.wav                   # phone-voice cleanup to -16 LUFS; pauses > 0.4 s shrink to 0.25 s (--keep-pauses: off)
+node src/cli.js voice-clean raw.wav clean.wav                   # phone-voice cleanup to -16 LUFS; pauses > 0.8 s shrink to 0.4 s (--keep-pauses: off)
 ```
 MCP: `capcut_build_episode { spec, preview, capcut, replace }`.
 
