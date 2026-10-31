@@ -122,3 +122,31 @@ If any line has `vo`, append an audio track `{ name: "Voice", type: "audio", ite
   (a reused clip continues where it stopped); every other shot is punched in by `zoom` (default 1.2, 1 = off).
 - `flip: v | h | hv` on a video/image item: mirror it vertically and/or horizontally (e.g. footage shot as a reflection).
 - `files: [b.mp4, c.mp4]` on a video item: the slot plays `file` from `src`, then fills the rest of its duration with the listed clips in turn (B-roll under long talking parts).
+
+## Audio fades and crossfades
+- `fadeIn: 1.5`, `fadeOut: 2` (seconds) on an audio item (or in its style): clamped to the item (fadeIn first, then
+  fadeOut to what is left). Audio items always carry both in the timeline (0 = none); other kinds carry neither.
+- `crossfade: 2` on an audio track: every item that butts against the previous one (gap at most 0.05 s, or an overlap)
+  overlaps it by 2 s. The previous item runs 2 s longer (as far as its file allows; the rest pulls the next item's
+  start earlier), fades out over the overlap, and the next fades in over it; an item's own longer fade wins.
+  Items with a real gap are left alone. The overlap spills into `<track> 2` like any audio overlap.
+  Typical: `- { name: Music audio, type: audio, crossfade: 2, items: [...] }` with `until: <next>.start` per item.
+- CapCut: each faded segment gets an `audio_fades` material `{ id, fade_in_duration, fade_out_duration (µs),
+  fade_type: 0, name: "", type: "audio_fade" }` referenced from its `extra_material_refs`
+  (`CapCutDraft.setAudioFade`). This is the format pyJianYingDraft writes and CapCut 9.5 drafts carry an
+  `audio_fades` list, but no CapCut-made fade was available to compare: **unverified in CapCut 9.5** until the
+  owner opens a draft with fades (check: the fade handles show on the clip, and the sound fades).
+- Preview: `afade` in/out on the clip.
+
+## Blur and dim (explanation stretches)
+- `blur: 20` (gaussian sigma in px at 1080p, scaled to the source height) and/or `dim: 0.45` (0..1, multiplies the
+  picture: 0.45 = 55% brightness) on a video or image item (or in a style, e.g. `explain: { blur: 18, dim: 0.45 }`).
+- At resolve time the look is baked with ffmpeg into `<media_root>/.cache/<stem>.<key>.mp4|png` (spec `cache_dir`
+  overrides, relative to `media_root`). A video variant holds only the used range (`src` .. `src + dur` + 0.1 s), so
+  the item plays it from 0; the key hashes the source path, size, mtime, blur, dim and the range, so a changed
+  source, look or range renders a new file and an unchanged one is reused. CapCut and the preview just play the file.
+- The timeline item keeps `orig: { file, srcSec }` (the source clip and range) for usage checks; `blur`/`dim` stay
+  on video/image items (0 when unused).
+- `every`/`files` slots are cut first, then each shot gets its own variant.
+- Put the explainer on top: an overlay track with the transparent MOV from the studio's `tools/graphics/overlay.py`.
+- The cache is disposable (delete `.cache` to free space; the next build re-renders what it needs).

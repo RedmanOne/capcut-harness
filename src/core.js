@@ -283,6 +283,21 @@ export class CapCutDraft {
     return { segmentId: segId, lists: s.common_keyframes.length };
   }
 
+  // audio fade in/out (microseconds), the way CapCut stores it: an `audio_fades` material referenced from the
+  // segment's extra_material_refs (format as in pyJianYingDraft's AudioFade; CapCut 9.5 drafts carry the empty
+  // `audio_fades` list). Calling it again replaces the segment's fade; 0/0 removes it.
+  setAudioFade(segId, inUs = 0, outUs = 0) {
+    const { s } = this._find(segId);
+    s.extra_material_refs = s.extra_material_refs || [];
+    const old = s.extra_material_refs.find(id => findMat(this.content, id)[0] === 'audio_fades');
+    if (old) { s.extra_material_refs = s.extra_material_refs.filter(id => id !== old); this.content.materials.audio_fades = this._mats('audio_fades').filter(m => m.id !== old); }
+    if (!(inUs > 0) && !(outUs > 0)) return { segmentId: segId, fade: null };
+    const f = { id: uid(), fade_in_duration: Math.round(inUs || 0), fade_out_duration: Math.round(outUs || 0), fade_type: 0, name: '', type: 'audio_fade' };
+    this._mats('audio_fades').push(f);
+    s.extra_material_refs.push(f.id);
+    return { segmentId: segId, fade: f.id };
+  }
+
   // escape hatch: apply a JSON-merge-style patch to content (advanced/undocumented ops)
   rawPatch(patch) { deepMerge(this.content, patch); return { ok: true }; }
 

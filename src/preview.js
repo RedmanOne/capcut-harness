@@ -29,6 +29,14 @@ function hasAudioStream(file) {
   }
 }
 
+// fadeIn/fadeOut (seconds) as afade filters on a clip that starts at 0
+export function fades(item) {
+  let f = '';
+  if (item.fadeIn > 0) f += `,afade=t=in:st=0:d=${item.fadeIn}`;
+  if (item.fadeOut > 0) f += `,afade=t=out:st=${Math.max(0, Math.round((item.durSec - item.fadeOut) * 1000) / 1000)}:d=${item.fadeOut}`;
+  return f;
+}
+
 function buildFilterGraph(timeline, W, H, fps, durationSec, fontFile) {
   const { tracks } = timeline;
   let filterParts = [];
@@ -49,7 +57,7 @@ function buildFilterGraph(timeline, W, H, fps, durationSec, fontFile) {
         const idx = inputIndex++;
         videoInputs.push({ index: idx, item, isAudioOnly: true, inputArgs: ['-ss', String(item.srcSec || 0), '-t', String(item.durSec), '-i', item.file] });
         const aLabel = `a${audioInputCount++}`;
-        filterParts.push(`[${idx}:a]atrim=0:${item.durSec},asetpts=PTS-STARTPTS,volume=${item.volume || 1},adelay=${Math.round((item.atSec || 0) * 1000)}|${Math.round((item.atSec || 0) * 1000)}[${aLabel}]`);
+        filterParts.push(`[${idx}:a]atrim=0:${item.durSec},asetpts=PTS-STARTPTS,volume=${item.volume || 1}${fades(item)},adelay=${Math.round((item.atSec || 0) * 1000)}|${Math.round((item.atSec || 0) * 1000)}[${aLabel}]`);
         audioInputs.push(aLabel);
       }
       continue;

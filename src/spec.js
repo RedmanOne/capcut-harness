@@ -2,6 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import { execSync } from 'child_process';
 import YAML from 'yaml';
+import { applyVariants } from './variant.js';
 
 const round3 = n => Math.round(n * 1000) / 1000;
 
@@ -152,7 +153,11 @@ function resolveItem(item, track, spec, lines, episodeEnd, probe, stickersDir, i
     color: item.color,
     anim: item.anim,
     hidden: item.hidden,
-    flip: item.flip
+    flip: item.flip,
+    fadeIn: item.fadeIn,
+    fadeOut: item.fadeOut,
+    blur: item.blur,
+    dim: item.dim
   };
 
   const styleName = item.style ?? track.style;
@@ -168,6 +173,12 @@ function resolveItem(item, track, spec, lines, episodeEnd, probe, stickersDir, i
   resolved.anim ??= null;
   resolved.hidden ??= false;
   resolved.flip ??= null;
+  if (kind === 'audio') {
+    resolved.fadeIn = round3(Math.min(resolved.fadeIn ?? 0, resolved.durSec));
+    resolved.fadeOut = round3(Math.min(resolved.fadeOut ?? 0, resolved.durSec - resolved.fadeIn));
+  } else { delete resolved.fadeIn; delete resolved.fadeOut; }
+  if (kind !== 'video' && kind !== 'image') { delete resolved.blur; delete resolved.dim; }
+  else { resolved.blur ??= 0; resolved.dim ??= 0; }
 
   if (item.every) return cutSlot(resolved, item, spec, probe);
   return item.files ? fillSlot(resolved, item, spec, probe) : resolved;
@@ -184,6 +195,28 @@ function lanes(track) {
     lane.items.push(it); lane.end = it.atSec + it.durSec;
   }
   return out.length ? out.map((l, i) => ({ name: i ? `${track.name} ${i + 1}` : track.name, type: track.type, items: l.items })) : [track];
+}
+
+// `crossfade: N` on an audio track: each item that butts against (or overlaps) the previous one overlaps it by N s;
+// the previous one fades out over the overlap and the next fades in (an item's own fadeIn/fadeOut wins when longer).
+// The overlap comes from running the previous item longer (as far as its file allows); the rest moves the next
+// item's start earlier. The overlap then spills into a second lane like any audio overlap.
+export function applyCrossfade(items, N, probe) {
+  const xs = [...items].sort((a, b) => a.atSec - b.atSec);
+  for (let i = 1; i < xs.length; i++) {
+    const a = xs[i - 1], b = xs[i], aEnd = a.atSec + a.durSec;
+    if (b.atSec - aEnd > 0.05) continue;                    // a gap: not a hand-over
+    const have = aEnd - b.atSec;                            // overlap the spec already has
+    const need = Math.max(0, N - Math.max(0, have));
+    const room = a.file ? Math.max(0, probe(a.file) - a.srcSec - a.durSec) : need;
+    const ext = Math.min(need, room), pull = Math.min(need - ext, b.atSec);
+    a.durSec = round3(a.durSec + ext + Math.max(0, -have));
+    b.atSec = round3(b.atSec - pull); b.durSec = round3(b.durSec + pull);
+    const ov = round3(a.atSec + a.durSec - b.atSec);
+    a.fadeOut = round3(Math.min(Math.max(a.fadeOut ?? 0, ov), a.durSec - (a.fadeIn ?? 0)));
+    b.fadeIn = round3(Math.min(Math.max(b.fadeIn ?? 0, ov), b.durSec));
+  }
+  return items;
 }
 
 // `every: N` on a video item: cut the slot into equal shots of at most N seconds (a new frame every few seconds).
@@ -273,8 +306,13 @@ export function resolveSpec(spec, opts = {}) {
   const tracks = specTracks.map((track, ti) => {
     if (track.from_lines) return resolveFromLinesTrack(track, spec, lines, durationSec, stickers);
     const items = (track.items ?? []).map((item, i) => resolved[ti][i] ?? resolveItem(item, track, spec, lines, durationSec, probe, stickers, i)).flat();
+    if (track.type === 'audio' && track.crossfade > 0) applyCrossfade(items, track.crossfade, probe);
     return { name: track.name, type: track.type, items };
   }).flatMap(lanes);
+
+  // blur/dim: bake the look into cached files (opts.variant replaces the ffmpeg renderer in tests)
+  const cacheDir = resolvePath(mediaRoot(spec), spec.cache_dir ?? '.cache');
+  applyVariants(tracks, cacheDir, opts.variant);
 
   const voiceItems = lines
     .filter(l => l.vo)
