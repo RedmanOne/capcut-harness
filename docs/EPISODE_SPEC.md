@@ -115,6 +115,13 @@ If any line has `vo`, append an audio track `{ name: "Voice", type: "audio", ite
 - Motion: `anim` on an item (or in its style) adds CapCut keyframes: `pop` (sticker: 0 → 110% → 100% in 0.25 s,
   ±3° wobble, out in the last 0.15 s), `push` / `pull` (stills: 100% ↔ 108% over the clip), `shake` (0.4 s position
   jitter), `punch` (112% → 100% in 0.2 s). Combine with `+`: `pop+shake`. See `src/motion.js`.
+  Moving while shown (rule 35/36): `meme` (reaction meme: pop in, slow stretch to ~110% with a taller Y, drift toward
+  the centre and up, a slight tilt, squash out), `breathe` (full-frame memes and stills: scale 103-109% in a 2.4 s
+  wave plus a slow sideways drift, no edges show), `drift` (position toward the centre and up), `sway` (±2.5°
+  rotation), `kinetic` (text: slams in at 220% tilted and fades in, keeps growing slowly, flies out bigger and
+  fading). Don't combine two presets that write the same property (e.g. `meme+shake` both move position).
+- Volume: `volume: 0.5` on a video item (or in its style, e.g. `meme_r: { ..., volume: 0.5 }`) sets the clip's
+  sound level; memes play at half volume under the voice.
 - Rebuilding (`--replace`) refuses a draft that changed in CapCut since its last build (the owner's hand edits): bring
   the edits into the spec first, or pass `--force`. Replaced drafts are kept in `D:/CapCut/Draft backups/`, never deleted.
 - `hidden: true` keeps an item on the timeline but out of the picture (outline text: script lines, notes, cues).

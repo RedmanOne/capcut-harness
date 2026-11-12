@@ -28,6 +28,57 @@ const presets = {
   },
   // zoom punch on a word: 112% -> 100% in 0.2 s
   punch: (it) => ({ KFTypeScaleX: [[0, it.scale * 1.12], [0.2, it.scale]] }),
+
+  // reaction meme (rule 35): pop in, keep moving while shown (slow stretch to ~110% with a little more height,
+  // drift toward the centre and up, a slight tilt), then squash out from where it got to
+  meme(it, D) {
+    const s = it.scale, a = Math.min(0.35, D * 0.3), b = Math.min(0.25, D * 0.25), o = D - b;
+    const inX = [[0, 0.2], [0.35, 1.18], [0.65, 0.93], [1, 1]];
+    const inY = [[0, 0.2], [0.35, 1.25], [0.65, 0.9], [1, 1]];
+    const endX = 1.08, endY = 1.12;
+    const sx = [...inX.map(([f, v]) => [f * a, s * v]), [o, s * endX], [o + b * 0.4, s * endX * 1.12], [D, 0]];
+    const sy = [...inY.map(([f, v]) => [f * a, s * v]), [o, s * endY], [o + b * 0.4, s * endY * 0.88], [D, 0]];
+    const dx = it.posX > 0.05 ? -0.04 : it.posX < -0.05 ? 0.04 : 0.03;
+    const tilt = it.posX < 0 ? 1 : -1;
+    return {
+      KFTypeScaleX: sx, KFTypeScaleY: sy,
+      KFTypePositionX: [[0, it.posX], [D, it.posX + dx]],
+      KFTypePositionY: [[0, it.posY], [D, it.posY + 0.03]],
+      KFTypeRotation: [[0, 4 * tilt], [a, -1 * tilt], [D, 2 * tilt]],
+    };
+  },
+  // full-frame meme or still: never frozen; scale breathes 103-109% (no edges show) with a slow sideways drift
+  breathe(it, D) {
+    const s = it.scale, keys = [], xs = [];
+    const n = Math.max(2, Math.ceil(D / 0.5));
+    for (let i = 0; i <= n; i++) {
+      const t = (D * i) / n;
+      keys.push([t, s * (1.06 + 0.03 * Math.sin((2 * Math.PI * t) / 2.4))]);
+    }
+    xs.push([0, it.posX - 0.015], [D, it.posX + 0.015]);
+    return { KFTypeScaleX: keys, KFTypePositionX: xs };
+  },
+  // slow move toward the centre and up (pair it with push/pull or pop on stills and stickers)
+  drift(it, D) {
+    const dx = it.posX > 0.05 ? -0.05 : it.posX < -0.05 ? 0.05 : 0.04;
+    return { KFTypePositionX: [[0, it.posX], [D, it.posX + dx]], KFTypePositionY: [[0, it.posY], [D, it.posY + 0.03]] };
+  },
+  // gentle rotation back and forth, ±2.5°
+  sway(it, D) {
+    const keys = [], n = Math.max(2, Math.ceil(D / 0.6));
+    for (let i = 0; i <= n; i++) { const t = (D * i) / n; keys.push([t, 2.5 * Math.sin((2 * Math.PI * t) / 2.4)]); }
+    return { KFTypeRotation: keys };
+  },
+  // kinetic text (rule 36 text mode): slams in big and tilted, settles, keeps growing slowly, then flies out
+  // (grows and fades in the last 0.2 s)
+  kinetic(it, D) {
+    const s = it.scale, a = Math.min(0.3, D * 0.25), b = Math.min(0.2, D * 0.2), o = D - b;
+    return {
+      KFTypeScaleX: [[0, s * 2.2], [a * 0.6, s * 0.92], [a, s], [o, s * 1.1], [D, s * 1.5]],
+      KFTypeAlpha: [[0, 0], [a * 0.4, 1], [o, 1], [D, 0]],
+      KFTypeRotation: [[0, -6], [a, 0], [o, 1.5], [D, 4]],
+    };
+  },
 };
 
 /// "pop", "push+shake", ... -> merged keyframe lists in microseconds, or null.
@@ -36,7 +87,7 @@ export function motionKeyframes(item) {
   const D = item.durSec, out = {};
   for (const name of String(item.anim).split('+')) {
     const p = presets[name.trim()];
-    if (!p) throw new Error(`unknown anim: ${name} (pop, push, pull, shake, punch)`);
+    if (!p) throw new Error(`unknown anim: ${name} (${Object.keys(presets).join(', ')})`);
     for (const [type, keys] of Object.entries(p(item, D)))
       out[type] = [...(out[type] || []), ...keys.filter(([t]) => t <= D + 1e-6)];
   }

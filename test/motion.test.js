@@ -30,3 +30,32 @@ test('wrapText breaks at spaces within the width', () => {
   assert.equal(wrapText('one two three four', 9), 'one two\nthree\nfour');
   assert.equal(wrapText('short', 20), 'short');
 });
+
+test('meme: pops in, keeps moving through the hold, squashes out to 0', () => {
+  const k = motionKeyframes(item('meme', 2.5));
+  const sx = k.KFTypeScaleX, sy = k.KFTypeScaleY;
+  assert.equal(sx.at(-1)[1], 0);
+  assert.equal(sy.at(-1)[1], 0);
+  // the hold is not steady: scale grows between the end of the entrance and the start of the exit
+  const atIn = sx.find(([t]) => t >= 0.35e6 - 1)[1], atOut = sx.filter(([t]) => t <= 2.25e6 + 1).at(-1)[1];
+  assert.ok(atOut > atIn * 1.05);
+  assert.ok(k.KFTypePositionX.at(-1)[1] < 0.7); // drifts toward the centre from the right
+  assert.ok(k.KFTypeRotation.length >= 3);
+});
+
+test('breathe stays above 100% (no edges on a full-frame shot) and drifts', () => {
+  const k = motionKeyframes({ anim: 'breathe', durSec: 5, scale: 1, posX: 0, posY: 0 });
+  assert.ok(k.KFTypeScaleX.every(([, v]) => v >= 1.029 && v <= 1.091));
+  assert.ok(k.KFTypeScaleX.length >= 10);
+  assert.notEqual(k.KFTypePositionX[0][1], k.KFTypePositionX.at(-1)[1]);
+});
+
+test('kinetic text: fades in, holds visible, flies out; drift and sway exist', () => {
+  const k = motionKeyframes({ anim: 'kinetic', durSec: 2, scale: 1, posX: 0, posY: 0 });
+  assert.equal(k.KFTypeAlpha[0][1], 0);
+  assert.equal(k.KFTypeAlpha.at(-1)[1], 0);
+  assert.ok(k.KFTypeAlpha.some(([, v]) => v === 1));
+  assert.ok(k.KFTypeScaleX[0][1] > 2);
+  const d = motionKeyframes({ anim: 'pop+drift+sway', durSec: 3, scale: 0.4, posX: -0.5, posY: 0 });
+  assert.ok(d.KFTypePositionX.at(-1)[1] > -0.5 && d.KFTypeRotation.length > 3);
+});
