@@ -156,3 +156,15 @@ describe('blur / dim variants', () => {
     assert.equal(tracks[0].items[0].file, out);
   });
 });
+
+import { test as t2 } from 'node:test';
+t2('setChroma defaults to the owner\'s CapCut sliders (40 / 10 -> 0.4 / 0.1)', async () => {
+  const { CapCutDraft } = await import('../src/core.js');
+  const d = Object.create(CapCutDraft.prototype);
+  d.content = { materials: {}, tracks: [{ segments: [{ id: 'S', extra_material_refs: [] }] }] };
+  d.setChroma('S');
+  const m = d.content.materials.chromas[0];
+  assert.equal(m.intensity_value, 0.4);
+  assert.equal(m.shadow_value, 0.1);
+  assert.deepEqual(d.content.tracks[0].segments[0].extra_material_refs, [m.id]);
+});

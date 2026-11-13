@@ -160,9 +160,10 @@ If any line has `vo`, append an audio track `{ name: "Voice", type: "audio", ite
 
 ## Chroma key, cover fit, text look and reveal (owner review 2026-11-13)
 - `chroma: true` (or `{ color, intensity, shadow, edgeSmooth, spill }`) on a video/image item: CapCut's green removal,
-  a `chromas` material `{ type: chroma, color: "#01fe00ff", intensity_value: 1.0, shadow_value: 0.2,
+  a `chromas` material `{ type: chroma, color: "#01fe00ff", intensity_value: 0.4, shadow_value: 0.1,
   edge_smooth_value: 0, spill_value: 0, path: <CapCut>/Resources/Chroma2, version: v2 }` referenced from the
-  segment's extra_material_refs (`CapCutDraft.setChroma`). Defaults = the owner's own key on E001R-cut-1.
+  segment's extra_material_refs (`CapCutDraft.setChroma`). Defaults (owner, round 2): CapCut's sliders Intensity 40 / Shadow 10 = stored 0.4 / 0.1
+  (the UI shows the stored value x 100; the owner's first hand key was 1.0 / 0.2 = 100 / 20, too strong).
   `CAPCUT_CHROMA_PATH` overrides the resource path (CapCut 9.6.0.4097's by default).
 - `cover: true` on a video/image item: scale it so it fills the canvas (CapCut fits media inside the frame, so a
   non-16:9 picture shows bars, and `breathe`/drift motion moves the edge in). Resolved at spec time from ffprobe's

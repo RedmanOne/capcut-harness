@@ -306,12 +306,13 @@ export class CapCutDraft {
   }
 
   // chroma key (green removal) as CapCut 9.6 stores it: a `chromas` material referenced from the segment's
-  // extra_material_refs. Defaults = the owner's hand-made key on E001R-cut-1 (2026-11-13).
+  // extra_material_refs. Defaults (owner, 2026-11-13 round 2): CapCut's sliders Intensity 40, Shadow 10 = 0.4 / 0.1
+  // (the UI shows the stored 0..1 value x 100: the owner's first key, stored 1.0 / 0.2, read 100 / 20).
   setChroma(segId, o = {}) {
     const { s } = this._find(segId);
     const m = {
-      id: uid(), type: 'chroma', color: o.color ?? '#01fe00ff', intensity_value: o.intensity ?? 1.0,
-      shadow_value: o.shadow ?? 0.2, path: o.path ?? CHROMA_PATH, resource_id: '', should_transfer_color: true,
+      id: uid(), type: 'chroma', color: o.color ?? '#01fe00ff', intensity_value: o.intensity ?? 0.4,
+      shadow_value: o.shadow ?? 0.1, path: o.path ?? CHROMA_PATH, resource_id: '', should_transfer_color: true,
       edge_smooth_value: o.edgeSmooth ?? 0.0, spill_value: o.spill ?? 0.0, version: 'v2',
     };
     this._mats('chromas').push(m);
