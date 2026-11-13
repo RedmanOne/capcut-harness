@@ -79,6 +79,25 @@ const presets = {
       KFTypeRotation: [[0, -6], [a, 0], [o, 1.5], [D, 4]],
     };
   },
+
+  // ---- text in/out (owner 2026-11-13: motion only in and out, a calm readable hold in between; vary them).
+  // Combine one `tin_*` with one `tout_*` ("tin_rise+tout_fade"); each writes keys only inside its window.
+  tin_pop(it, D) { const a = Math.min(0.3, D * 0.5), s = it.scale;
+    return { KFTypeScaleX: [[0, s * 0.4], [a * 0.6, s * 1.08], [a, s]], KFTypeAlpha: [[0, 0], [a * 0.4, 1]] }; },
+  tin_rise(it, D) { const a = Math.min(0.3, D * 0.5);
+    return { KFTypePositionY: [[0, it.posY - 0.08], [a, it.posY]], KFTypeAlpha: [[0, 0], [a, 1]] }; },
+  tin_drop(it, D) { const a = Math.min(0.3, D * 0.5);
+    return { KFTypePositionY: [[0, it.posY + 0.1], [a * 0.7, it.posY - 0.01], [a, it.posY]], KFTypeAlpha: [[0, 0], [a * 0.4, 1]] }; },
+  tin_slide(it, D) { const a = Math.min(0.3, D * 0.5);
+    return { KFTypePositionX: [[0, it.posX - 0.15], [a, it.posX]], KFTypeAlpha: [[0, 0], [a, 1]] }; },
+  tin_zoom(it, D) { const a = Math.min(0.3, D * 0.5), s = it.scale;
+    return { KFTypeScaleX: [[0, s * 1.6], [a, s]], KFTypeAlpha: [[0, 0], [a, 1]] }; },
+  tout_fade(it, D) { const b = Math.min(0.25, D * 0.4), s = it.scale;
+    return { KFTypeAlpha: [[D - b, 1], [D, 0]], KFTypeScaleX: [[D - b, s], [D, s * 1.08]] }; },
+  tout_up(it, D) { const b = Math.min(0.25, D * 0.4);
+    return { KFTypePositionY: [[D - b, it.posY], [D, it.posY + 0.08]], KFTypeAlpha: [[D - b, 1], [D, 0]] }; },
+  tout_shrink(it, D) { const b = Math.min(0.25, D * 0.4), s = it.scale;
+    return { KFTypeScaleX: [[D - b, s], [D, s * 0.5]], KFTypeAlpha: [[D - b, 1], [D, 0]] }; },
 };
 
 /// "pop", "push+shake", ... -> merged keyframe lists in microseconds, or null.

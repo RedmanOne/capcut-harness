@@ -15,6 +15,17 @@ function defaultProbe(file) {
   }
 }
 
+// width/height of a video or image (for `cover`), [0, 0] when unknown
+function defaultSize(file) {
+  try {
+    const out = execSync(`ffprobe -v error -select_streams v:0 -show_entries stream=width,height -of csv=p=0 "${file}"`, { encoding: 'utf8' });
+    const [w, h] = out.trim().split(/[,\s]+/).map(Number);
+    return [w || 0, h || 0];
+  } catch {
+    return [0, 0];
+  }
+}
+
 function resolvePath(base, rel) {
   if (!rel) return null;
   const abs = path.isAbsolute(rel) ? rel : path.resolve(base, rel);
@@ -157,7 +168,13 @@ function resolveItem(item, track, spec, lines, episodeEnd, probe, stickersDir, i
     fadeIn: item.fadeIn,
     fadeOut: item.fadeOut,
     blur: item.blur,
-    dim: item.dim
+    dim: item.dim,
+    chroma: item.chroma,
+    cover: item.cover,
+    bold: item.bold,
+    stroke: item.stroke,
+    strokeWidth: item.strokeWidth,
+    show: item.show
   };
 
   const styleName = item.style ?? track.style;
@@ -177,7 +194,20 @@ function resolveItem(item, track, spec, lines, episodeEnd, probe, stickersDir, i
     resolved.fadeIn = round3(Math.min(resolved.fadeIn ?? 0, resolved.durSec));
     resolved.fadeOut = round3(Math.min(resolved.fadeOut ?? 0, resolved.durSec - resolved.fadeIn));
   } else { delete resolved.fadeIn; delete resolved.fadeOut; }
-  if (kind !== 'video' && kind !== 'image') { delete resolved.blur; delete resolved.dim; }
+  if (kind !== 'video' && kind !== 'image') { delete resolved.blur; delete resolved.dim; delete resolved.chroma; delete resolved.cover; }
+  if (kind !== 'text') { delete resolved.bold; delete resolved.stroke; delete resolved.strokeWidth; delete resolved.show; }
+  for (const k of ['chroma', 'cover', 'bold', 'stroke', 'strokeWidth', 'show']) if (resolved[k] == null) delete resolved[k];
+  // cover: scale a full-frame picture so it fills the canvas (CapCut fits media inside it; a non-16:9 picture would
+  // show bars, and motion presets move it further), then motion presets work relative to that scale
+  if (resolved.cover && file) {
+    const [mw, mh] = (spec.__sizeProbe || defaultSize)(file);
+    const cw = spec.canvas?.w ?? 1920, ch = spec.canvas?.h ?? 1080;
+    if (mw && mh) {
+      const f = Math.max((cw / ch) / (mw / mh), (mw / mh) / (cw / ch));
+      resolved.scale = round3(resolved.scale * f);
+    }
+    delete resolved.cover;
+  }
   else { resolved.blur ??= 0; resolved.dim ??= 0; }
 
   if (item.every) return cutSlot(resolved, item, spec, probe);

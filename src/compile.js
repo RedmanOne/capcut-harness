@@ -47,7 +47,8 @@ export function compileToCapcut(tl, { draft, base, replace = false, force = fals
     for (const it of tr.items) {
       const o = { atUs: us(it.atSec), durUs: us(it.durSec), srcStartUs: us(it.srcSec || 0), trackIndex: idx,
         scale: it.scale, posX: it.posX, posY: it.posY, opacity: it.opacity, volume: it.volume };
-      const r = it.kind === 'text' ? d.addText(it.text, { ...o, fontSize: it.fontSize ?? undefined, color: it.color ?? undefined })
+      const r = it.kind === 'text' ? d.addText(it.text, { ...o, fontSize: it.fontSize ?? undefined, color: it.color ?? undefined,
+          bold: it.bold, stroke: it.stroke, strokeWidth: it.strokeWidth, show: it.show })
         : it.kind === 'image' ? d.addImage(it.file, o)
         : it.kind === 'audio' ? d.addAudio(it.file, o)
         : d.addVideo(it.file, o);
@@ -57,6 +58,7 @@ export function compileToCapcut(tl, { draft, base, replace = false, force = fals
       // outline text (script lines, notes): on the timeline to read, not in the picture
       if (it.hidden) d.setProps(r.segmentId, { visible: false });
       if (it.kind === 'audio' && (it.fadeIn > 0 || it.fadeOut > 0)) d.setAudioFade(r.segmentId, us(it.fadeIn || 0), us(it.fadeOut || 0));
+      if (it.chroma) d.setChroma(r.segmentId, it.chroma === true ? {} : it.chroma);
       if (it.flip) d.setProps(r.segmentId, { flipH: it.flip.includes('h'), flipV: it.flip.includes('v') });
     }
   }

@@ -59,3 +59,12 @@ test('kinetic text: fades in, holds visible, flies out; drift and sway exist', (
   const d = motionKeyframes({ anim: 'pop+drift+sway', durSec: 3, scale: 0.4, posX: -0.5, posY: 0 });
   assert.ok(d.KFTypePositionX.at(-1)[1] > -0.5 && d.KFTypeRotation.length > 3);
 });
+
+test('text in/out presets: motion only at the ends, a steady readable hold between', () => {
+  const k = motionKeyframes({ anim: 'tin_rise+tout_fade', durSec: 2, scale: 1, posX: 0, posY: 0.1 });
+  const a = k.KFTypeAlpha;
+  assert.deepEqual(a.map(([t, v]) => [t / 1e6, v]), [[0, 0], [0.3, 1], [1.75, 1], [2, 0]]);
+  assert.ok(k.KFTypePositionY.every(([t]) => t <= 0.3e6));
+  for (const n of ['tin_pop', 'tin_drop', 'tin_slide', 'tin_zoom', 'tout_up', 'tout_shrink'])
+    assert.ok(motionKeyframes({ anim: n, durSec: 1.5, scale: 1, posX: 0, posY: 0 }));
+});

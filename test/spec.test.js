@@ -315,3 +315,18 @@ testFill('files fill a long slot back to back', () => {
   assertFill.deepEqual(it.map(i => [i.file.split('/').pop(), i.atSec, i.durSec, i.srcSec]),
     [['a.mp4', 0, 8, 2], ['b.mp4', 8, 6, 0], ['a.mp4', 14, 10, 0], ['b.mp4', 24, 1, 0]]);
 });
+
+it('cover scales a non-16:9 picture to fill the canvas; chroma/bold pass through', async () => {
+  const { resolveSpec } = await import('../src/spec.js');
+  const spec = { __dir: '.', __sizeProbe: () => [1080, 1080], canvas: { w: 1920, h: 1080 }, tracks: [
+    { name: 'Main', type: 'video', items: [{ file: 'a.png', at: 0, dur: 2, cover: true, chroma: true }] },
+    { name: 'T', type: 'text', items: [{ text: 'ONE TWO', at: 0, dur: 1, bold: true, stroke: '#000000', show: 3 }] }] };
+  const tl = resolveSpec(spec, { probe: () => 5 });
+  const it = tl.tracks[0].items[0];
+  assert.equal(it.scale, 1.778);
+  assert.equal(it.chroma, true);
+  assert.equal(it.cover, undefined);
+  const t = tl.tracks[1].items[0];
+  assert.equal(t.show, 3);
+  assert.equal(t.bold, true);
+});

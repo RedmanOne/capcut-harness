@@ -23,6 +23,9 @@ export const DRAFTS_DIR =
 const TEMPLATE_DRAFT = process.env.CAPCUT_TEMPLATE_DRAFT || '0723';
 
 const uid = () => crypto.randomUUID().toUpperCase();
+// CapCut's chroma resource (the path the owner's own key carried; CapCut finds its resource by type when it moves)
+const CHROMA_PATH = process.env.CAPCUT_CHROMA_PATH ||
+  path.join(os.homedir(), 'AppData/Local/CapCut/Apps/9.6.0.4097/Resources/Chroma2');
 const clone = o => JSON.parse(JSON.stringify(o));
 const US = 1e6;
 
@@ -195,9 +198,28 @@ export class CapCutDraft {
       const content = JSON.parse(mat.content);
       content.text = text;
       if (content.styles && content.styles[0]) {
-        content.styles[0].range = [0, text.length];
-        if (opts.color) content.styles[0].fill = { content: { solid: { color: hexToRgb(opts.color) } } };
-        if (opts.fontSize) { content.styles[0].size = opts.fontSize; mat.font_size = opts.fontSize; }
+        const st = content.styles[0];
+        st.range = [0, text.length];
+        if (opts.color) st.fill = { content: { solid: { color: hexToRgb(opts.color) } } };
+        if (opts.fontSize) { st.size = opts.fontSize; mat.font_size = opts.fontSize; }
+        if (opts.bold || opts.stroke) delete st.effectStyle;   // our own look instead of the template's effect
+        if (opts.bold) { st.bold = true; mat.bold_width = 0.008; }
+        if (opts.stroke) {
+          const w = opts.strokeWidth ?? 0.08;
+          st.strokes = [{ content: { solid: { alpha: 1, color: hexToRgb(opts.stroke) } }, width: w }];
+          Object.assign(mat, { border_color: opts.stroke, border_width: w, border_alpha: 1 });
+        }
+        // show: only the first N characters are visible (word-by-word reveal without the layout moving): the rest
+        // keep their place with fill and stroke at alpha 0
+        if (opts.show != null && opts.show < text.length) {
+          const hidden = JSON.parse(JSON.stringify(st));
+          hidden.range = [opts.show, text.length];
+          hidden.fill = { alpha: 0, content: { solid: { alpha: 0, color: (st.fill?.content?.solid?.color) ?? [1, 1, 1] } } };
+          if (hidden.strokes) hidden.strokes = hidden.strokes.map(k => ({ ...k, content: { solid: { ...k.content.solid, alpha: 0 } } }));
+          st.range = [0, opts.show];
+          content.styles = [st, hidden];
+          mat.is_rich_text = true;
+        }
       }
       mat.content = JSON.stringify(content);
       mat.name = text.slice(0, 40);             // the template's label otherwise shows in CapCut's list
@@ -281,6 +303,20 @@ export class CapCutDraft {
     s.keyframe_refs = s.keyframe_refs || [];
     if (lists.KFTypeScaleX) s.uniform_scale = { on: false, value: s.clip?.scale?.x ?? 1 };
     return { segmentId: segId, lists: s.common_keyframes.length };
+  }
+
+  // chroma key (green removal) as CapCut 9.6 stores it: a `chromas` material referenced from the segment's
+  // extra_material_refs. Defaults = the owner's hand-made key on E001R-cut-1 (2026-11-13).
+  setChroma(segId, o = {}) {
+    const { s } = this._find(segId);
+    const m = {
+      id: uid(), type: 'chroma', color: o.color ?? '#01fe00ff', intensity_value: o.intensity ?? 1.0,
+      shadow_value: o.shadow ?? 0.2, path: o.path ?? CHROMA_PATH, resource_id: '', should_transfer_color: true,
+      edge_smooth_value: o.edgeSmooth ?? 0.0, spill_value: o.spill ?? 0.0, version: 'v2',
+    };
+    this._mats('chromas').push(m);
+    s.extra_material_refs = [...(s.extra_material_refs || []), m.id];
+    return { segmentId: segId, chromaId: m.id };
   }
 
   // audio fade in/out (microseconds), the way CapCut stores it: an `audio_fades` material referenced from the

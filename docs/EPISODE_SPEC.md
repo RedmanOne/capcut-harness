@@ -157,3 +157,20 @@ If any line has `vo`, append an audio track `{ name: "Voice", type: "audio", ite
 - `every`/`files` slots are cut first, then each shot gets its own variant.
 - Put the explainer on top: an overlay track with the transparent MOV from the studio's `tools/graphics/overlay.py`.
 - The cache is disposable (delete `.cache` to free space; the next build re-renders what it needs).
+
+## Chroma key, cover fit, text look and reveal (owner review 2026-11-13)
+- `chroma: true` (or `{ color, intensity, shadow, edgeSmooth, spill }`) on a video/image item: CapCut's green removal,
+  a `chromas` material `{ type: chroma, color: "#01fe00ff", intensity_value: 1.0, shadow_value: 0.2,
+  edge_smooth_value: 0, spill_value: 0, path: <CapCut>/Resources/Chroma2, version: v2 }` referenced from the
+  segment's extra_material_refs (`CapCutDraft.setChroma`). Defaults = the owner's own key on E001R-cut-1.
+  `CAPCUT_CHROMA_PATH` overrides the resource path (CapCut 9.6.0.4097's by default).
+- `cover: true` on a video/image item: scale it so it fills the canvas (CapCut fits media inside the frame, so a
+  non-16:9 picture shows bars, and `breathe`/drift motion moves the edge in). Resolved at spec time from ffprobe's
+  width/height; the scale is multiplied, motion presets then work relative to it.
+- Text: `bold: true`, `stroke: "#000000"`, `strokeWidth: 0.12` (style-level `strokes`, material border fields; the
+  template's effect style is dropped). `show: N`: only the first N characters are visible (the rest keep their place
+  at alpha 0): one segment per word with the full phrase reveals it word by word without the layout moving.
+  Per-range alpha is unverified in CapCut 9.6 until the owner opens a draft.
+- Text in/out presets (motion only at the ends, a still hold between): `tin_pop`, `tin_rise`, `tin_slide`,
+  `tin_drop`, `tin_zoom` and `tout_fade`, `tout_up`, `tout_shrink`; combine one of each (`tin_rise+tout_fade`).
+
