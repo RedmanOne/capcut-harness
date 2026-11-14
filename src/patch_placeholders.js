@@ -7,6 +7,7 @@
 //   { "remove": "e001r_dk1_drafting_table.png", "at": 656.93 } deletes that one segment (by media file name and start).
 //   { "repoint": "C:/Users/x/Downloads/a.mp3", "to": "D:/media/a.mp3" } points every material (and the draft's media
 //   list in draft_meta_info.json) at the moved file; the target must exist and the source path must be in use.
+//   { "setVolume": "<segment id>", "volume": 0.12 } sets one segment's volume (linear, 1 = 0 dB), e.g. a music re-level.
 // Each matching segment is replaced by the clip in the same track, at the same start and length (volume 0, scale 1,
 // no motion), so the owner's edits elsewhere stay untouched. The root draft_content.json is saved through the harness
 // (validation, CapCut must be closed) and mirrored into Timelines/<id>/draft_content.json, which CapCut 9.6 also reads.
@@ -26,7 +27,14 @@ for (const [k, v] of Object.entries(d.content.materials)) if (Array.isArray(v)) 
 const done = [];
 const norm = x => String(x || '').split(String.fromCharCode(92)).join('/').toLowerCase();
 const repointed = [];
+const volumes = [];
 for (const p of patches) {
+  if (p.setVolume) {
+    const { s } = d._find(p.setVolume);
+    volumes.push({ id: p.setVolume, from: s.volume, to: p.volume });
+    if (!dry) { s.volume = p.volume; if (s.last_nonzero_volume != null && p.volume > 0) s.last_nonzero_volume = p.volume; }
+    continue;
+  }
   if (p.repoint) {
     if (!fs.existsSync(p.to)) throw new Error(`repoint target missing: ${p.to}`);
     let n = 0;
@@ -78,7 +86,7 @@ for (const ti of new Set(done.map(x => x.track).filter(x => typeof x === 'number
     if (!dry && a.start + a.duration > b.start + 1000) throw new Error(`track ${ti}: overlap at ${(b.start / US).toFixed(2)} s (list the covered segment for removal)`);
   }
 }
-if (dry) { console.log(JSON.stringify({ dry: true, done, repointed }, null, 1)); process.exit(0); }
+if (dry) { console.log(JSON.stringify({ dry: true, done, repointed, volumes }, null, 1)); process.exit(0); }
 const saved = d.save();
 // a CapCut-saved draft always fails two checks (duplicate material ids, shared render indexes): compare counts
 // mirror into every timeline copy CapCut keeps
@@ -88,4 +96,4 @@ if (fs.existsSync(tdir)) for (const id of fs.readdirSync(tdir)) {
   const f = path.join(tdir, id, 'draft_content.json');
   if (fs.existsSync(f)) { fs.copyFileSync(path.join(d.dir, 'draft_content.json'), f); mirrored.push(id); }
 }
-console.log(JSON.stringify({ saved: saved.saved, durationSec: saved.durationSec, validation: saved.validation, done, repointed, mirrored }, null, 1));
+console.log(JSON.stringify({ saved: saved.saved, durationSec: saved.durationSec, validation: saved.validation, done, repointed, volumes, mirrored }, null, 1));
