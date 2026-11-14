@@ -122,6 +122,9 @@ If any line has `vo`, append an audio track `{ name: "Voice", type: "audio", ite
   fading). Don't combine two presets that write the same property (e.g. `meme+shake` both move position).
 - Volume: `volume: 0.5` on a video item (or in its style, e.g. `meme_r: { ..., volume: 0.5 }`) sets the clip's
   sound level; memes play at half volume under the voice.
+- Rebuilding (`--replace`) builds the new draft completely as `<name>.__building`, validates it and only then moves the
+  old draft to the backups and renames the new one into place (meta name and folder rewritten); a build that fails or
+  is cut off leaves the old draft untouched (2026-11-14: a cut-off build had left an empty draft CapCut reset).
 - Rebuilding (`--replace`) refuses a draft that changed in CapCut since its last build (the owner's hand edits): bring
   the edits into the spec first, or pass `--force`. Replaced drafts are kept in `D:/CapCut/Draft backups/`, never deleted.
 - `hidden: true` keeps an item on the timeline but out of the picture (outline text: script lines, notes, cues).

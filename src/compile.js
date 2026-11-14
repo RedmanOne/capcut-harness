@@ -29,11 +29,13 @@ export function compileToCapcut(tl, { draft, base, replace = false, force = fals
     if (!force && (!built || built !== hashOf(path.join(dir, 'draft_content.json'))))
       throw new Error(`draft ${draft} was changed in CapCut since its last build (hand edits?). Bring the edits into the spec, ` +
         `or pass force to replace it (the old draft is kept in "${BACKUPS}").`);
-    fs.mkdirSync(BACKUPS, { recursive: true });
-    fs.renameSync(dir, path.join(BACKUPS, `${draft}.${new Date().toISOString().replace(/[:.]/g, '-')}`));
   }
-  cloneDraft(base, draft, { empty: true });
-  const d = new CapCutDraft(draft);
+  // Build the new draft completely under a temporary name, validate it, and only then swap it in (2026-11-14: a
+  // build cut off after the old draft was moved away left an empty draft that CapCut could not open and reset).
+  const tmpName = `${draft}.__building`, tmpDir = path.join(DRAFTS_DIR, tmpName);
+  if (fs.existsSync(tmpDir)) fs.rmSync(tmpDir, { recursive: true, force: true });   // our own leftover from a cut-off build
+  cloneDraft(base, tmpName, { empty: true });
+  const d = new CapCutDraft(tmpName);
   d.templateDraft = base;
   d.content.tracks = [];
   const { w, h, fps } = tl.canvas, g = gcd(w, h);
@@ -62,8 +64,24 @@ export function compileToCapcut(tl, { draft, base, replace = false, force = fals
       if (it.flip) d.setProps(r.segmentId, { flipH: it.flip.includes('h'), flipV: it.flip.includes('v') });
     }
   }
+  d.content.name = draft;
   const saved = d.save({ force });
+  if (!saved.validation.ok) throw new Error(`the new draft failed validation (kept as "${tmpName}", the old draft is untouched): ` +
+    JSON.stringify(saved.validation.issues).slice(0, 500));
+  // the new draft is complete: point its meta at the final name and folder, then swap folders
+  const metaPath = path.join(tmpDir, 'draft_meta_info.json');
+  if (fs.existsSync(metaPath)) {
+    const meta = JSON.parse(fs.readFileSync(metaPath, 'utf8'));
+    Object.assign(meta, { draft_name: draft, draft_fold_path: dir.split(path.sep).join('/') });
+    fs.writeFileSync(metaPath, JSON.stringify(meta));
+  }
+  for (const fn of fs.readdirSync(tmpDir)) if (/\.(mcpbak|tmp)$/.test(fn)) fs.rmSync(path.join(tmpDir, fn), { force: true });
+  if (fs.existsSync(dir)) {
+    fs.mkdirSync(BACKUPS, { recursive: true });
+    fs.renameSync(dir, path.join(BACKUPS, `${draft}.${new Date().toISOString().replace(/[:.]/g, '-')}`));
+  }
+  fs.renameSync(tmpDir, dir);
   fs.writeFileSync(path.join(dir, MAP_FILE), JSON.stringify({ episode: tl.episode, builtAt: new Date().toISOString(),
     contentHash: hashOf(path.join(dir, 'draft_content.json')), items: map }, null, 2));
-  return { ...saved, items: Object.keys(map).length };
+  return { ...saved, saved: draft, items: Object.keys(map).length };
 }
