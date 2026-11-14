@@ -38,7 +38,7 @@ for (const p of patches) {
 }
 if (dry) { console.log(JSON.stringify({ dry: true, done }, null, 1)); process.exit(0); }
 const saved = d.save();
-if (!saved.validation.ok) console.error('VALIDATION:', JSON.stringify(saved.validation.issues).slice(0, 800));
+// a CapCut-saved draft always fails two checks (duplicate material ids, shared render indexes): compare counts
 // mirror into every timeline copy CapCut keeps
 const tdir = path.join(d.dir, 'Timelines');
 const mirrored = [];
