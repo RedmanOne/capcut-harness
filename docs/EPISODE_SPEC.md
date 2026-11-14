@@ -178,3 +178,11 @@ If any line has `vo`, append an audio track `{ name: "Voice", type: "audio", ite
 - Text in/out presets (motion only at the ends, a still hold between): `tin_pop`, `tin_rise`, `tin_slide`,
   `tin_drop`, `tin_zoom` and `tout_fade`, `tout_up`, `tout_shrink`; combine one of each (`tin_rise+tout_fade`).
 
+## Patching an owner-edited draft (no rebuild)
+`node src/patch_placeholders.js <draft> <patch.json> [--dry]` swaps placeholder stills for delivered clips in place:
+each `{ placeholder, file, src, at }` replaces the one matching segment with the clip in the same track and slot
+(volume 0, scale 1, no motion). Saved through the harness (CapCut closed) and mirrored into
+`Timelines/<id>/draft_content.json`. The build map's contentHash stays as it was, so the draft keeps counting as
+hand-edited and `--replace` keeps refusing it. A CapCut-saved draft fails our validator on duplicate material ids and
+shared render indexes (CapCut's own format): compare the issue counts before and after instead.
+
