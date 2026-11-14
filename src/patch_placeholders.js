@@ -2,6 +2,9 @@
 //   node src/patch_placeholders.js <draft name> <patch.json> [--dry]
 // patch.json: [{ "placeholder": "e001r_FC4.png", "file": "D:/.../FC4.mp4", "src": 0, "at": 511.32 }, ...]
 //   "at" (seconds, optional) picks one segment when the same placeholder sits in several slots.
+//   "newAt" / "newDur" (seconds, optional): place the clip at its natural length instead of the old slot (the owner's
+//   decision decides what it may cover; other segments it would overlap must be listed for removal).
+//   { "remove": "e001r_dk1_drafting_table.png", "at": 656.93 } deletes that one segment (by media file name and start).
 // Each matching segment is replaced by the clip in the same track, at the same start and length (volume 0, scale 1,
 // no motion), so the owner's edits elsewhere stay untouched. The root draft_content.json is saved through the harness
 // (validation, CapCut must be closed) and mirrored into Timelines/<id>/draft_content.json, which CapCut 9.6 also reads.
@@ -20,6 +23,17 @@ const mats = {};
 for (const [k, v] of Object.entries(d.content.materials)) if (Array.isArray(v)) for (const m of v) if (m && m.id) mats[m.id] = m;
 const done = [];
 for (const p of patches) {
+  if (p.remove) {
+    const hit = [];
+    d.content.tracks.forEach((tr, ti) => (tr.segments || []).forEach(s => {
+      const mp = String(mats[s.material_id]?.path || '').split('\\').join('/');
+      if (mp.endsWith('/' + p.remove) && Math.abs(s.target_timerange.start / US - p.at) < 0.1) hit.push({ ti, s });
+    }));
+    if (hit.length !== 1) throw new Error(`remove ${p.remove} at ${p.at}: ${hit.length} matching segments (need exactly 1)`);
+    done.push({ removed: p.remove, track: hit[0].ti, atSec: hit[0].s.target_timerange.start / US, durSec: hit[0].s.target_timerange.duration / US });
+    if (!dry) d.deleteSegment(hit[0].s.id);
+    continue;
+  }
   if (!fs.existsSync(p.file)) throw new Error(`missing clip: ${p.file}`);
   const hits = [];
   d.content.tracks.forEach((tr, ti) => (tr.segments || []).forEach(s => {
@@ -28,13 +42,22 @@ for (const p of patches) {
   }));
   if (hits.length !== 1) throw new Error(`${p.placeholder} at ${p.at}: ${hits.length} matching segments (need exactly 1)`);
   const { ti, s } = hits[0];
-  const at = s.target_timerange.start, dur = s.target_timerange.duration;
+  const at = p.newAt != null ? Math.round(p.newAt * US) : s.target_timerange.start;
+  const dur = p.newDur != null ? Math.round(p.newDur * US) : s.target_timerange.duration;
   done.push({ placeholder: p.placeholder, track: d.content.tracks[ti].name || ti, atSec: at / US, durSec: dur / US, src: p.src || 0, file: p.file });
   if (dry) continue;
   d.deleteSegment(s.id);
   const r = d.addVideo(p.file, { atUs: at, durUs: dur, srcStartUs: Math.round((p.src || 0) * US), trackIndex: ti, volume: 0, scale: 1, posX: 0, posY: 0, opacity: 1 });
   done.at(-1).segmentId = r.segmentId;
   d.content.tracks[ti].segments.sort((a, b) => a.target_timerange.start - b.target_timerange.start);
+}
+// no two segments may overlap on a video track the patch touched (main track or overlay)
+for (const ti of new Set(done.map(x => x.track).filter(x => typeof x === 'number'))) {
+  const segs = d.content.tracks[ti].segments;
+  for (let i = 1; i < segs.length; i++) {
+    const a = segs[i - 1].target_timerange, b = segs[i].target_timerange;
+    if (!dry && a.start + a.duration > b.start + 1000) throw new Error(`track ${ti}: overlap at ${(b.start / US).toFixed(2)} s (list the covered segment for removal)`);
+  }
 }
 if (dry) { console.log(JSON.stringify({ dry: true, done }, null, 1)); process.exit(0); }
 const saved = d.save();

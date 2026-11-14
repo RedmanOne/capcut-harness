@@ -181,7 +181,8 @@ If any line has `vo`, append an audio track `{ name: "Voice", type: "audio", ite
 ## Patching an owner-edited draft (no rebuild)
 `node src/patch_placeholders.js <draft> <patch.json> [--dry]` swaps placeholder stills for delivered clips in place:
 each `{ placeholder, file, src, at }` replaces the one matching segment with the clip in the same track and slot
-(volume 0, scale 1, no motion). Saved through the harness (CapCut closed) and mirrored into
+(volume 0, scale 1, no motion). `newAt`/`newDur` place a clip at its natural length instead of the old slot, and
+`{ remove, at }` deletes a segment it would cover; any remaining overlap on a touched track is refused. Saved through the harness (CapCut closed) and mirrored into
 `Timelines/<id>/draft_content.json`. The build map's contentHash stays as it was, so the draft keeps counting as
 hand-edited and `--replace` keeps refusing it. A CapCut-saved draft fails our validator on duplicate material ids and
 shared render indexes (CapCut's own format): compare the issue counts before and after instead.
